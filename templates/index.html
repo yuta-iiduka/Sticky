@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+	<!-- ■Header 
+	<nav class="navbar navbar-expand-lg navbar-light bg-light">
+		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler" aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<a class="navbar-brand" href="#">Sticky</a>
+		<div class="collapse navbar-collapse" id="navbarToggler">
+			<div>ここにメニュー</div>
+		</div>
+	</nav>
+	-->
+	<!-- 新規作成ボタン -->
+	<div id="create_new_sticky" class="btn btn-dark rounded-circle p-0" style="width:1.5rem;" title="新規作成">＋</div>
+	
+	<!-- ■Sticky -->
+	{% for sticky in stickies %}
+		<div id="sticky_{{sticky.sticky_id}}" url="{{url_for('sticky_update',sticky_id=sticky.sticky_id)}}" url2="{{url_for('sticky_delete',sticky_id=sticky.sticky_id)}}" sticky_id="{{sticky.sticky_id}}" style="background-color:{{sticky.color}};">
+			<div id="sticky_content_{{sticky.sticky_id}}">
+				{{sticky.content}}
+			</div>
+			<span id="sticky_status_{{sticky.sticky_id}}" style="font-size:x-small;color:green;"></span><br>
+		</div>
+		<script>
+			document.getElementById("sticky_content_{{sticky.sticky_id}}").innerHTML = document.getElementById("sticky_content_{{sticky.sticky_id}}").innerText;
+		</script>
+	{% endfor %}
+	<!-- ■Modal -->
+	<div id="modal-area"></div>
+{% endblock %}
+
+{% block script %}
+
+	//■グリッド配置の設定
+	let g   = new Grid(50,50);
+	let stk = new Sticky().set_xhr();
+	{% for sticky in stickies %}
+		let sticky_editor_{{sticky.sticky_id}} = new Editor("sticky_{{sticky.sticky_id}}");
+		let sticky_{{sticky.sticky_id}} = new TreeObject("sticky_{{sticky.sticky_id}}");
+		g.set_jquery_obj(sticky_{{sticky.sticky_id}}.jquery_obj);
+		g.reposition(sticky_{{sticky.sticky_id}}.jquery_obj,{{sticky.top}},{{sticky.left}},{{sticky.height}},{{sticky.width}});
+		sticky_{{sticky.sticky_id}}.collider.set_title("{{sticky.title}}");
+		sticky_{{sticky.sticky_id}}.jquery_obj.mouseover(function(){
+			//マウスオーバーイベント
+			let sticky_id = $(this).attr("sticky_id");
+			let to   = TreeObject.get_tree_obj_by_id("sticky_" + sticky_id);
+			let info = g.get_active_jquery_obj_info();
+			Sticky.active_sticky_id     = sticky_id;
+			Sticky.active_sticky_title  = to.collider.title;
+			Sticky.active_sticky_color  = to.jquery_obj.css("background-color");
+			Sticky.active_sticky_status = 0;
+			Sticky.active_sticky_top    = info["y"];
+			Sticky.active_sticky_left   = info["x"];
+			Sticky.active_sticky_height = info["h"];
+			Sticky.active_sticky_width  = info["w"];
+		});
+		add_controll_button("{{sticky.sticky_id}}");
+	{% endfor %}
+	g.fit();
+	
+	//■新しいsticky_idを取得する関数
+	function get_new_sticky_id(){
+		let sticky_id = "{{current_user.id}}_";
+		let max_id = 0;
+		for(let i=0; i<TreeObject.list.length;i++){
+			let target_id = parseInt(TreeObject.list[i].jquery_obj.attr("id").split("_")[2]);
+			if(max_id < target_id){
+				max_id = target_id;
+			}
+		}
+		max_id++;
+		return sticky_id + max_id;
+	}
+	
+	//■新しいstickyを生成する関数
+	function create_new_sticky(){
+		let sticky_id = get_new_sticky_id();
+		let sticky_obj_id = "sticky_" + sticky_id;
+		//【TODO】url:が"sticky"依存 ->動的取得できなか？
+		$("body").append(
+			'<div id="sticky_' + sticky_id + '" url="/sticky/' + sticky_id + '" url2="/sticky/delete/' + sticky_id + '" sticky_id="'+ sticky_id +'">'
+				+ '<div id="sticky_content_' + sticky_id + '">'
+					+ 'ここに内容を入力してください'
+				+ '</div>'
+				+ '<span id="sticky_status_' + sticky_id + '" style="font-size:x-small;color:green;"></span><br>'
+			+'</div>'
+		);
+		add_controll_button(sticky_id);
+		let sticky_obj = $("#"+sticky_obj_id);
+		new Editor(sticky_obj_id);
+		let to = new TreeObject(sticky_obj_id);
+		to.jquery_obj.css("background-color","#FFD77C");
+		g.set_jquery_obj(to.jquery_obj);
+		g.reposition(to.jquery_obj,2,2,10,10);
+		to.collider.set_title("タイトル");
+		to.jquery_obj.mouseover(function(){
+			//マウスオーバーイベント
+			let sticky_id = to.jquery_obj.attr("sticky_id");
+			//let to = TreeObject.get_tree_obj_by_id("sticky_" + sticky_id);
+			let info = g.get_active_jquery_obj_info();
+			Sticky.active_sticky_id     = sticky_id;
+			Sticky.active_sticky_title  = to.collider.title;
+			Sticky.active_sticky_color  = to.jquery_obj.css("background-color");
+			Sticky.active_sticky_status = 0;
+			Sticky.active_sticky_top    = info["y"];
+			Sticky.active_sticky_left   = info["x"];
+			Sticky.active_sticky_height = info["h"];
+			Sticky.active_sticky_width  = info["w"];
+		});
+		g.fit();
+		mdl.setToriggers("header_title")
+			.setToriggerEvent(show_sticky_info);
+	}
+	
+	//■stickyの保存，削除ボタンを生成
+	function add_controll_button(sticky_id){
+		$("#sticky_"+sticky_id).append(
+			'<span id="sticky_save_' + sticky_id + '"   class="btn btn-sm btn-primary rounded-pill">保存</span>' +
+			'<span id="sticky_delete_' + sticky_id + '" class="btn btn-sm btn-danger rounded-pill" >削除</span>'
+		)
+		$("#sticky_save_" + sticky_id).click(function(){
+			console.log(sticky_id);
+			let url       = $("#sticky_"+sticky_id).attr("url");
+			Sticky.active_sticky_id  = sticky_id;
+			Sticky.active_sticky_url = url;
+			Sticky.active_sticky_content = $("#sticky_content_" + sticky_id).html();
+			Sticky.active_sticky_title   = TreeObject.get_tree_obj_by_id("sticky_" + sticky_id).collider.title;
+			Sticky.active_sticky_status  = 0;
+			stk.send();
+		});
+		$("#sticky_delete_" + sticky_id).click(function(){
+			console.log(sticky_id);
+			let url       = $("#sticky_"+sticky_id).attr("url2");
+			Sticky.active_sticky_id  = sticky_id;
+			Sticky.active_sticky_url = url;
+			stk.send();
+		});
+	}
+	
+	//■新規作成ボタン
+	$("#create_new_sticky").click(function(){
+		create_new_sticky();
+	});
+	
+	//■Stickyの設定変更モーダル
+	let mdl = new Modal("modal-area")
+				.setHeader("<h3>設定</h3>")
+				.setBody("")
+				.setFooter("")
+				.setToriggers("header_title")
+				.setToriggerEvent(show_sticky_info)
+				.setYesEvent(function(){
+					let sticky_id = "sticky_" + Sticky.active_sticky_id;
+					let to = TreeObject.get_tree_obj_by_id(sticky_id).collider.set_title($("#modal-input-title").val());
+					$("#sticky_"+Sticky.active_sticky_id).css("background-color",$("#modal-input-color").val());
+				});
+	//■Stickyの情報取得およびHTML生成
+	function show_sticky_info(){
+		let title = Sticky.active_sticky_title;
+		let color = toString_16(Sticky.active_sticky_color);
+		mdl.setBody(
+			"タイトル"+
+			"<div><input type='textbox' id='modal-input-title' value='" + title + "' /></div>" +
+			"<br>"+
+			"カラー"+
+			"<div><input type='color'   id='modal-input-color' value='" + color + "' /></div>" +
+			"<br>"+
+			"<div class='text-warning'>※「保存」ボタンを押すまで，設定は保存されません</div>"
+		);
+	}
+	
+	function toString_16(rgb_color){
+		let rgb = rgb_color.replaceAll("rgb(","").replaceAll(")","");
+		let rgb_list = rgb.split(", ");
+		let rgb_16 = "#";
+		console.log(rgb_list);
+		for(let x=0; x<rgb_list.length; x++){
+			let num = parseInt(rgb_list[x]);
+			rgb_16 = rgb_16 + String(num.toString(16));
+		}
+		return rgb_16;
+	}
+	
+{% endblock %}
