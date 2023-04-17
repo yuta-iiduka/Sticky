@@ -269,7 +269,7 @@ class Grid{
 		jquery_obj.width(self.w * 2);
 		jquery_obj.height(self.h * 2);
 		jquery_obj.offset({"top":self.h,"left":self.w});
-		this.jquery_obj_list.push({"id":jquery_obj.attr("id"),"obj":jquery_obj,"w":jquery_obj.width(),"h":jquery_obj.height(),"top":jquery_obj.offset()["top"],"left":jquery_obj.offset()["left"],"x":parseInt(jquery_obj.offset()["left"]/self.w),"y":parseInt(jquery_obj.offset()["top"]/self.h),"color":"","status":0});
+		this.jquery_obj_list.push({"id":jquery_obj.attr("id"),"obj":jquery_obj,"w":jquery_obj.width(),"h":jquery_obj.height(),"top":jquery_obj.offset()["top"],"left":jquery_obj.offset()["left"],"x":Math.round(jquery_obj.offset()["left"]/self.w),"y":Math.round(jquery_obj.offset()["top"]/self.h),"color":"","status":0});
 		jquery_obj.click(function(){
 			self.active = true;
 		});
@@ -382,8 +382,8 @@ class Grid{
 				self.jquery_obj_list[i].h    = parseInt(obj.height() / self.h);
 				self.jquery_obj_list[i].top  = grid_y;
 				self.jquery_obj_list[i].left = grid_x;
-				self.jquery_obj_list[i].x    = parseInt(obj.offset()["left"] / self.w);
-				self.jquery_obj_list[i].y    = parseInt(obj.offset()["top"]  / self.h);
+				self.jquery_obj_list[i].x    = Math.round(obj.offset()["left"] / self.w);
+				self.jquery_obj_list[i].y    = Math.round(obj.offset()["top"]  / self.h);
 			}
 		}
 	}
@@ -399,6 +399,8 @@ class Grid{
 				
 				self.w = parseInt(self.def_w * ratio_width);
 				self.h = parseInt(self.def_h * ratio_height);
+				//self.w = self.def_w * ratio_width;
+				//self.h = self.def_h * ratio_height;
 				for(let i=0; i<self.jquery_obj_list.length; i++){
 					let obj = self.jquery_obj_list[i].obj;
 					let obj_top  = self.jquery_obj_list[i].y * self.h;
